@@ -46,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument(
         'input_file',  # 输入文件参数
         nargs='?',  # 可选参数
-        default='inputs/test_input.md',  # 默认值为 'inputs/test_input.md'
+        default='inputs/user_input.md',  # 默认值为 'inputs/test_input.md'
         help='输入 markdown 文件的路径（默认: inputs/test_input.md）'
     )
     

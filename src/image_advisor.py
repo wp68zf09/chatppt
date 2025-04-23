@@ -9,7 +9,8 @@ from io import BytesIO
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-
+import torch
+from diffusers import StableDiffusion3Pipeline
 from logger import LOG  # 导入日志工具
 
 class ImageAdvisor(ABC):
@@ -20,6 +21,7 @@ class ImageAdvisor(ABC):
         self.prompt_file = prompt_file
         self.prompt = self.load_prompt()
         self.create_advisor()
+        self.create_imageGenerationmModel()
 
     def load_prompt(self):
         """
@@ -31,6 +33,13 @@ class ImageAdvisor(ABC):
         except FileNotFoundError:
             LOG.error(f"找不到提示文件 {self.prompt_file}!")
             raise
+    def create_imageGenerationmModel(self):
+        
+        pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3.5-medium", torch_dtype=torch.bfloat16,use_fast=True, add_prefix_space=True)
+        pipe = pipe.to("cuda")
+        self.SDmodel=pipe;
+        
+
 
     def create_advisor(self):
         """
@@ -42,9 +51,11 @@ class ImageAdvisor(ABC):
         ])
 
         self.model = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=4096,
+            model="deepseek-chat",
+            base_url="https://api.deepseek.com",
+            api_key="sk-3e5ff44e82b745a7ab7a748b806951c2",
+            temperature=0.5,
+            max_tokens=4000
         )
         self.advisor = chat_prompt | self.model
 
@@ -70,6 +81,8 @@ class ImageAdvisor(ABC):
         keywords = self.get_keywords(response.content)
         image_pair = {}
 
+        all_images = []
+
         for slide_title, query in keywords.items():
             # 检索图像
             images = self.get_bing_images(slide_title, query, num_images, timeout=1, retries=3)
@@ -87,6 +100,29 @@ class ImageAdvisor(ABC):
             save_path = os.path.join(save_directory, f"{img['slide_title']}_1.jpeg")
             self.save_image(img["obj"], save_path)
             image_pair[img["slide_title"]] = save_path
+
+            # 将所有图像信息存储在 all_images 列表中
+            all_images.extend(images)
+
+        # 在循环外处理所有图像
+        if all_images:
+            # 找到分辨率最小的图像
+            min_res_image = min(all_images, key=lambda x: x["resolution"])
+            min_res_save_path = os.path.join(f"images/{image_directory}", f"{min_res_image['slide_title']}_1.jpeg")
+            if os.path.exists(min_res_save_path):
+                os.remove(min_res_save_path)
+                LOG.debug(f"Deleted image with minimum resolution: {min_res_save_path}")
+
+                # 使用 self.SDmodel 重新生成图像
+                new_image_description = f"A visually appealing image for {min_res_image['slide_title']}"
+                new_image = self.SDmodel(
+                    new_image_description,
+                    num_inference_steps=40,
+                    guidance_scale=4.5,
+                ).images[0]
+                new_image.save(min_res_save_path)
+                LOG.debug(f"Generated new image and saved to: {min_res_save_path}")
+                image_pair[min_res_image['slide_title']] = min_res_save_path
 
         content_with_images = self.insert_images(markdown_content, image_pair)
         return content_with_images, image_pair

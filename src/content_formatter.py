@@ -40,9 +40,11 @@ class ContentFormatter(ABC):
         ])
         
         self.model = ChatOpenAI(
-            model="gpt-4o-mini",
+            model="deepseek-chat",
+            base_url="https://api.deepseek.com",
+            api_key="sk-3e5ff44e82b745a7ab7a748b806951c2",
             temperature=0.5,
-            max_tokens=4096,
+            max_tokens=4000
         )
         
         self.formatter = system_prompt | self.model  # 使用的模型名称)

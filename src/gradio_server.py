@@ -16,10 +16,10 @@ from logger import LOG
 from openai_whisper import asr, transcribe
 # from minicpm_v_model import chat_with_image
 from docx_parser import generate_markdown_from_docx
+import os
 
-
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_PROJECT"] = "ChatPPT"
+# os.environ["LANGCHAIN_TRACING_V2"] = "true"
+# os.environ["LANGCHAIN_PROJECT"] = "ChatPPT"
 
 # 实例化 Config，加载配置文件
 config = Config()
@@ -33,6 +33,7 @@ ppt_template = load_template(config.ppt_template)
 
 # 初始化 LayoutManager，管理幻灯片布局
 layout_manager = LayoutManager(get_layout_mapping(ppt_template))
+
 
 
 # 定义生成幻灯片内容的函数
@@ -187,5 +188,6 @@ if __name__ == "__main__":
     demo.queue().launch(
         share=False,
         server_name="0.0.0.0",
+        server_port=7860,
         # auth=("django", "qaz!@#$") # ⚠️注意：记住修改密码
     )
